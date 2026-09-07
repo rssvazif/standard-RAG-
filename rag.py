@@ -1,22 +1,18 @@
+import os
 import requests
 
 from config import (
-    OLLAMA_MODEL,
-    OLLAMA_URL,
+    OPENROUTER_MODEL,
+    OPENROUTER_URL,
 )
 
 from retrieve import HybridRetriever
 
 
 def build_context(results):
-
     parts = []
 
-    for index, result in enumerate(
-        results,
-        start=1,
-    ):
-
+    for index, result in enumerate(results, start=1):
         metadata = result.metadata
 
         parts.append(
@@ -40,12 +36,15 @@ Content:
     return "\n---\n".join(parts)
 
 
-def generate_answer(
-    query: str,
-    context: str,
-):
+def generate_answer(query: str, context: str):
+    api_key = os.getenv("OPENROUTER_API_KEY")
 
-    prompt = f"""
+    if not api_key:
+        raise RuntimeError(
+            "OPENROUTER_API_KEY environment variable is not set."
+        )
+
+    system_prompt = """
 You are a RAG assistant.
 
 Answer the user's question using ONLY
@@ -56,9 +55,11 @@ knowledge base, explicitly say that
 the knowledge base does not contain
 enough information.
 
-Cite the source number in your answer,
-for example [Source 1].
+Always cite the source number.
+For example: [Source 1].
+"""
 
+    user_prompt = f"""
 Knowledge Base:
 {context}
 
@@ -69,27 +70,33 @@ Answer:
 """
 
     response = requests.post(
-        OLLAMA_URL,
-
-        json={
-            "model": OLLAMA_MODEL,
-            "prompt": prompt,
-            "stream": False,
-
-            "options": {
-                "temperature": 0.1,
-            },
+        OPENROUTER_URL,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
         },
-
+        json={
+            "model": OPENROUTER_MODEL,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": system_prompt,
+                },
+                {
+                    "role": "user",
+                    "content": user_prompt,
+                },
+            ],
+            "temperature": 0.1,
+        },
         timeout=120,
     )
 
     response.raise_for_status()
 
-    return response.json()[
-        "response"
-    ].strip()
+    data = response.json()
 
+    return data["choices"][0]["message"]["content"].strip()
 
 def main():
 

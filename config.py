@@ -16,10 +16,9 @@ EMBEDDING_MODEL = (
 )
 
 
-# Local LLM
-OLLAMA_MODEL = "qwen2.5:1.5b"
-OLLAMA_URL = "http://localhost:11434/api/generate"
-
+# LLM
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_MODEL = "openrouter/free"
 
 # Chunking
 CHUNK_SIZE = 500
